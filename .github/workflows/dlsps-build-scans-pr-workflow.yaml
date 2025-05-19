@@ -81,12 +81,12 @@ jobs:
       run: |
         rm -rf edge-ai-libraries-repo
         sudo rm -rf /tmp/coverage.xml
-        echo "Cleaning up previous run"
+        echo "Cleaning up run"
            if [ -n "$(docker ps -aq)" ]; then
                docker stop $(docker ps -aq)
            fi
-           if [ -n "$(docker ps -aq)" ]; then
-               docker rmi $(docker ps -aq)
+           if [ -n "$(docker images -aq)" ]; then
+               docker rmi -f $(docker images -aq)
            fi
   bandit-scan:
     name: Run Bandit Scan
@@ -105,7 +105,8 @@ jobs:
     - name: Run Bandit Scan
       run: |
         mkdir -p reports
-        docker run --rm -v "${{ github.workspace }}:/src" pycqa/bandit -r /src -f txt -o /src/reports/bandit-report.txt
+        docker pull ghcr.io/pycqa/bandit/bandit
+        docker run --rm -v "${{ github.workspace }}:/src" ghcr.io/pycqa/bandit/bandit -r /src -f txt -o /src/reports/bandit-report.txt
     - name: Upload Bandit TXT Report
       uses: actions/upload-artifact@v4
       with:
@@ -115,3 +116,4 @@ jobs:
       if: always()
       run: |
         rm -rf edge-ai-libraries-repo
+        
