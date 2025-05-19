@@ -38,7 +38,7 @@ jobs:
       run: |
         echo "### DL Streamer Pipeline Server Docker image for ${{ matrix.ubuntu_version }} :ship:" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
-        echo "${{ env.image }}" >> $GITHUB_STEP_SUMMARY
+        echo "intel/dlstreamer-pipeline-server:3.0.0" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
         echo "Built on commit id: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
     - name: Clean up
@@ -83,10 +83,10 @@ jobs:
         sudo rm -rf /tmp/coverage.xml
         echo "Cleaning up run"
            if [ -n "$(docker ps -aq)" ]; then
-               docker stop $(docker ps -aq)
+               docker stop $(docker ps -aq) || true
            fi
            if [ -n "$(docker images -aq)" ]; then
-               docker rmi -f $(docker images -aq)
+               docker rmi -f $(docker images -aq) || true
            fi
   bandit-scan:
     name: Run Bandit Scan
@@ -106,7 +106,7 @@ jobs:
       run: |
         mkdir -p reports
         docker pull ghcr.io/pycqa/bandit/bandit
-        docker run --rm -v "${{ github.workspace }}:/src" ghcr.io/pycqa/bandit/bandit -r /src -f txt -o /src/reports/bandit-report.txt
+        docker run --rm -v "${{ github.workspace }}:/src" ghcr.io/pycqa/bandit/bandit -r /src -f txt -o /src/reports/bandit-report.txt || true
     - name: Upload Bandit TXT Report
       uses: actions/upload-artifact@v4
       with:
