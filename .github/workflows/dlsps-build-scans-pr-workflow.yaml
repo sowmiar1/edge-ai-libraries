@@ -88,8 +88,8 @@ jobs:
            if [ -n "$(docker images -aq)" ]; then
                docker rmi -f $(docker images -aq) || true
            fi
-  bandit-scan:
-    name: Run Bandit Scan
+  bandit-virus-scans:
+    name: Run Bandit and Virus Scan
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -106,14 +106,27 @@ jobs:
       run: |
         mkdir -p reports
         docker pull ghcr.io/pycqa/bandit/bandit
-        docker run --rm -v "${{ github.workspace }}:/src" ghcr.io/pycqa/bandit/bandit -r /src -f txt -o /src/reports/bandit-report.txt || true
-    - name: Upload Bandit TXT Report
+        echo "### Bandit Scan Results" >> $GITHUB_STEP_SUMMARY
+        docker run --rm -v "${{ github.workspace }}:/src" ghcr.io/pycqa/bandit/bandit -r /src/edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server -f txt -o /src/reports/bandit-report.txt || true >> $GITHUB_STEP_SUMMARY
+        echo "Please find full report in bandit-report.txt" >> $GITHUB_STEP_SUMMARY
+    - name: Run Virus Scan
+      run: |
+        mkdir -p reports
+        docker pull clamav/clamav
+        echo "### Virus Scan Results" >> $GITHUB_STEP_SUMMARY
+        docker run --rm -v "${{ github.workspace }}:/src" /src clamav/clamav clamscan -r  /src/edge-ai-libraries/microservices/dlstreamer-pipeline-server/ > /src/reports/clamav-report.txt || true
+        echo "Please find full report in clamav-report.txt" >> $GITHUB_STEP_SUMMARY
+    - name: Upload Scan Reports
       uses: actions/upload-artifact@v4
       with:
-        name: bandit-report
-        path: reports/bandit-report.txt
+        name: bandit-virus-reports
+        path: reports/
     - name: Clean up
       if: always()
       run: |
         rm -rf edge-ai-libraries-repo
+        if [ -n "$(docker images -aq)" ]; then
+               docker rmi -f $(docker images -aq) || true
+        fi
+
         
