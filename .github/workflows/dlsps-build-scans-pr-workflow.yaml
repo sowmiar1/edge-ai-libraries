@@ -64,23 +64,26 @@ jobs:
       run: |
         cd edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server/
         make build
-        make test
-    
+        pytest_output=$(make test | tee /tmp/pytest_output.txt)
+        summary_line=$(echo "$pytest_output" | grep -E '==+ .* in .*s ==+')
     - name: Create summary
       if: always()
       run: |
         echo "### Unit Test Completed for DLSPS commit id ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-        echo "Please check coverage.xml for detailed report" >> $GITHUB_STEP_SUMMARY
+        echo "### Pytest Summary" >> "$GITHUB_STEP_SUMMARY"
+        echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "$summary_line" >> "$GITHUB_STEP_SUMMARY"
+        echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
     - name: Upload Scan artifact to Github
       uses: actions/upload-artifact@v4
       with:
-        name: Coverage-xml
-        path: /tmp/coverage.xml    
+        name: Coverage-reports
+        path: /tmp/htmlcov
     - name: Clean up
       if: always()
       run: |
         rm -rf edge-ai-libraries-repo
-        sudo rm -rf /tmp/coverage.xml
+        sudo rm -rf /tmp/htmlcov
         echo "Cleaning up run"
            if [ -n "$(docker ps -aq)" ]; then
                docker stop $(docker ps -aq) || true
