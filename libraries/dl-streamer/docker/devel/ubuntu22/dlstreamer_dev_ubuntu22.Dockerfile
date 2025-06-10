@@ -7,6 +7,7 @@
 FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG BUILD_ARG=Debug
 
 LABEL description="This is the development image of Intel® Deep Learning Streamer (Intel® DL Streamer) Pipeline Framework"
 LABEL vendor="Intel Corporation"
@@ -19,6 +20,7 @@ ARG OPENVINO_FILENAME=openvino_toolkit_ubuntu22_2025.1.0.18503.6fec06580ab_x86_6
 
 ENV DLSTREAMER_DIR=/home/dlstreamer/dlstreamer
 ENV GSTREAMER_DIR=/opt/intel/dlstreamer/gstreamer
+ENV INTEL_OPENVINO_DIR=/opt/intel/openvino_$OPENVINO_VERSION.0
 ENV LIBVA_DRIVERS_PATH=/usr/lib/x86_64-linux-gnu/dri
 ENV LIBVA_DRIVER_NAME=iHD
 ENV GST_VA_ALL_DRIVERS=1
@@ -82,7 +84,7 @@ RUN \
     six==1.16.0 \
     pycairo==1.26.0 \
     PyGObject==3.50.0 \
-    setuptools==70.0.0 \
+    setuptools==78.1.1 \
     pytest==8.3.3 \
     pluggy==1.5.0 \
     exceptiongroup==1.2.2 \
@@ -195,7 +197,7 @@ RUN \
     -Dgstreamer-vaapi:glx=enabled \
     -Dgstreamer-vaapi:wayland=enabled \
     -Dgstreamer-vaapi:egl=enabled \
-    --buildtype=debug \
+    --buildtype=${BUILD_ARG,} \
     --prefix=${GSTREAMER_DIR} \
     --libdir=lib/ \
     --libexecdir=bin/ \
@@ -230,9 +232,9 @@ RUN \
 RUN \
     wget -q --no-check-certificate https://storage.openvinotoolkit.org/repositories/openvino/packages/"$OPENVINO_VERSION"/linux/"$OPENVINO_FILENAME".tgz && \
     tar -xf "$OPENVINO_FILENAME".tgz && \
-    mv "$OPENVINO_FILENAME" /opt/intel/openvino_"$OPENVINO_VERSION".0 && \
+    mv "$OPENVINO_FILENAME" ${INTEL_OPENVINO_DIR} && \
     rm "$OPENVINO_FILENAME".tgz && \
-    /opt/intel/openvino_"$OPENVINO_VERSION".0/install_dependencies/install_openvino_dependencies.sh -y
+    ${INTEL_OPENVINO_DIR}/install_dependencies/install_openvino_dependencies.sh -y
 
 # OpenCV
 WORKDIR /
@@ -268,7 +270,6 @@ RUN \
 WORKDIR $DLSTREAMER_DIR/build
 
 # OpenVINO environment variables
-ENV INTEL_OPENVINO_DIR=/opt/intel/openvino_$OPENVINO_VERSION.0
 ENV OpenVINO_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
 ENV InferenceEngine_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
 ENV ngraph_DIR=$INTEL_OPENVINO_DIR/runtime/cmake
@@ -278,12 +279,12 @@ ENV LD_LIBRARY_PATH=$INTEL_OPENVINO_DIR/tools/compile_tool:$INTEL_OPENVINO_DIR/r
 ENV PYTHONPATH=$INTEL_OPENVINO_DIR/python/${PYTHON_VERSION}:$PYTHONPATH
 
 # DLStreamer environment variables
-ENV LIBDIR=${DLSTREAMER_DIR}/build/intel64/Debug/lib
-ENV BINDIR=${DLSTREAMER_DIR}/build/intel64/Debug/bin
+ENV LIBDIR=${DLSTREAMER_DIR}/build/intel64/${BUILD_ARG}/lib
+ENV BINDIR=${DLSTREAMER_DIR}/build/intel64/${BUILD_ARG}/bin
 ENV PATH=${GSTREAMER_DIR}/bin:${BINDIR}:${PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:${LIBDIR}/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:${PKG_CONFIG_PATH}
-ENV LIBRARY_PATH=${GSTREAMER_DIR}/lib:${LIBDIR}:/usr/lib:${LIBRARY_PATH}
-ENV LD_LIBRARY_PATH=${GSTREAMER_DIR}/lib:${LIBDIR}:/usr/lib:${LD_LIBRARY_PATH}
+ENV LIBRARY_PATH=${GSTREAMER_DIR}/lib:${LIBDIR}:/usr/lib:/usr/local/lib:${LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=${GSTREAMER_DIR}/lib:${LIBDIR}:/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV LIB_PATH=$LIBDIR
 ENV GST_PLUGIN_PATH=${LIBDIR}:${GSTREAMER_DIR}/lib/gstreamer-1.0:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}
 ENV LC_NUMERIC=C
@@ -296,7 +297,7 @@ ENV PYTHONPATH=${GSTREAMER_DIR}/lib/python3/dist-packages:${DLSTREAMER_DIR}/pyth
 # Build DLStreamer
 RUN \
     cmake \
-    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_BUILD_TYPE=${BUILD_ARG} \
     -DENABLE_PAHO_INSTALLATION=ON \
     -DENABLE_RDKAFKA_INSTALLATION=ON \
     -DENABLE_VAAPI=ON \
