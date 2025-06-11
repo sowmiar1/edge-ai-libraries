@@ -15,30 +15,61 @@ on:
 permissions: read-all
 
 jobs:
-  build-dls-pipeline-server-image:
+ build-dls-pipeline-server-image:
     name: Build DLS Pipeline Server ${{ matrix.ubuntu_version }} img
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - ubuntu_version: ubuntu22
+          - ubuntu_version: ubuntu24
     steps:
     - name: Check out edge-ai-libraries repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #4.2.2
       with:
+        persist-credentials: false
         path: edge-ai-libraries-repo
+
+    - name: Init submodules
+      run: |
+        cd edge-ai-libraries-repo
+        git submodule update --init libraries/dl-streamer/thirdparty/spdlog
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #3.4.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set BASE_IMAGE
+      env:
+        BASE_IMAGE22: ${{ needs.build-dls-deb-img.outputs.ubuntu22_image }}
+        BASE_IMAGE24: ${{ needs.build-dls-deb-img.outputs.ubuntu24_image }}
+      run: |
+        if [ "${{ matrix.ubuntu_version }}" == "ubuntu22" ]; then
+          echo "BASE_IMAGE=${BASE_IMAGE22}" >> $GITHUB_ENV
+        elif [ "${{ matrix.ubuntu_version }}" == "ubuntu24" ]; then
+          echo "BASE_IMAGE=${BASE_IMAGE24}" >> $GITHUB_ENV
+        fi
+
     - name: Build dls-pipeline-server-img
       run: |
         cd edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server/docker
+        export DLSTREAMER_PIPELINE_SERVER_IMAGE=ghcr.io/${{ github.repository }}/intel/dlstreamer-pipeline-server:latest-${{ matrix.ubuntu_version }}
+        export DLSTREAMER_PIPELINE_SERVER_DOCKERFILE=Dockerfile
         docker compose build --no-cache --pull
-    
+ 
     - name: Create summary
       if: always()
       run: |
-        echo "### DL Streamer Pipeline Server Docker image for ${{ matrix.ubuntu_version }} :ship:" >> $GITHUB_STEP_SUMMARY
+        echo "### DL Streamer Pipeline Server Docker image for ${{ matrix.ubuntu_version }}" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
-        echo "intel/dlstreamer-pipeline-server:3.0.0" >> $GITHUB_STEP_SUMMARY
+        echo "ghcr.io/${{ github.repository }}/intel/dlstreamer-pipeline-server:latest-${{ matrix.ubuntu_version }}">> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
         echo "Built on commit id: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
     - name: Clean up
