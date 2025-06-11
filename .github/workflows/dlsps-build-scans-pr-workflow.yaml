@@ -15,7 +15,7 @@ on:
 permissions: read-all
 
 jobs:
- build-dls-pipeline-server-image:
+  build-dls-pipeline-server-image:
     name: Build DLS Pipeline Server ${{ matrix.ubuntu_version }} img
     runs-on: ubuntu-latest
     permissions:
@@ -77,7 +77,6 @@ jobs:
       run: |
         rm -rf edge-ai-libraries-repo
         docker rmi intel/dlstreamer-pipeline-server:3.0.0 || true
-
   unit-test-dls-pipeline-server:
     name: Unit Test DLS Pipeline Server
     runs-on: ubuntu-latest
