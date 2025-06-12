@@ -12,7 +12,7 @@ on:
       - 'microservices/dlstreamer-pipeline-server/**'
       
   workflow_call:
-permissions: read-all
+permissions: {}
 
 jobs:
   build-dls-pipeline-server-image:
