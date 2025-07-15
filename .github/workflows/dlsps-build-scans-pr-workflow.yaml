@@ -93,7 +93,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: Coverage-reports
-        path: /tmp/htmlcov
+        path: /tmp/htmlcov  
     - name: Scan Docker image with Trivy
       uses: ./edge-ai-libraries-repo/.github/actions/common/trivy-image-scan
       with:
@@ -221,4 +221,75 @@ jobs:
       severity-levels: 'HIGH,CRITICAL'
       output-report-path: reports/dlsps_trivy_report.json
       name: dlsps_trivy_report
-   
+  pylint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out edge-ai-libraries repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #4.2.2
+        with:
+          persist-credentials: false
+          path: edge-ai-libraries-repo
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # Adjust as needed
+
+      - name: Install dependencies from all requirements.txt files
+        run: |
+          python -m pip install --upgrade pip
+          cd edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server/
+          find . -type f -iname 'requirements.txt' -exec pip install -r {} \;
+
+      - name: Install pylint
+        run: pip install pylint
+
+      - name: Run pylint
+        run: |
+          cd edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server/
+          find . -type f -iname '*.py' -exec pylint {} \;  > pylint_report.txt || true
+          cp pylint_report.txt ${{ github.workspace }}
+          echo "### Pylint Results" >> $GITHUB_STEP_SUMMARY
+          echo "Please find pylint report in pylint-report.txt" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload pylint report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: pylint_report.txt
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out edge-ai-libraries repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #4.2.2
+        with:
+          persist-credentials: false
+          path: edge-ai-libraries-repo
+
+      - name: Install ShellCheck
+        run:  sudo apt-get update &&  sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck
+        run: |
+          cd edge-ai-libraries-repo/microservices/dlstreamer-pipeline-server/
+          echo "Scanning for .sh files and running ShellCheck..."
+          find . -type f -name "*.sh" | tee shell_files.txt | xargs -r shellcheck -f gcc > shellcheck_report.txt || true
+          echo "### ShellCheck Results" >> $GITHUB_STEP_SUMMARY
+          echo "Please find ShellCheck report in shellcheck_report.txt" >> $GITHUB_STEP_SUMMARY
+          cp shellcheck_report.txt ${{ github.workspace }}
+
+      - name: Upload ShellCheck report
+        uses: actions/upload-artifact@v4
+        with:
+          name: shellcheck-report
+          path: shellcheck_report.txt
+  static-code-analysis:
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+      packages: read
+    name: Static Code Analysis
+    uses: ./.github/workflows/codeql.yaml 
